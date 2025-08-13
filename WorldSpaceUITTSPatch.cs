@@ -46,9 +46,7 @@ public static class WorldSpaceUITTS_Extension
         __instance.text.color = new Color(textColor.r, textColor.g, textColor.b, textAlpha);
 
         if (__instance.followTransform)
-        {
-            __instance.followPosition = Vector3.Lerp(__instance.followPosition, __instance.followTransform.position, 10f * Time.deltaTime);
-        }
+            __instance.followPosition = __instance.followTransform.position;
         __instance.worldPosition = __instance.followPosition;
     }
 }
