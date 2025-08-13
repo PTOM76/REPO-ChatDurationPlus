@@ -1,0 +1,15 @@
+.vs/
+bin/
+obj/
+Debug/
+Release/
+Library/
+Temp/
+
+*.user
+*.suo
+*.pdb
+*.cache
+*.log
+*.userprefs
+*.dll
