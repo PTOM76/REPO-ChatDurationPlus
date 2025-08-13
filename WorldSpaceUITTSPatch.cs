@@ -45,8 +45,9 @@ public static class WorldSpaceUITTS_Extension
         Color textColor = (Color) textColorField.GetValue(__instance);
         __instance.text.color = new Color(textColor.r, textColor.g, textColor.b, textAlpha);
 
-        if (__instance.followTransform)
+        if (__instance.followTransform) {
             __instance.followPosition = __instance.followTransform.position;
-        __instance.worldPosition = __instance.followPosition;
+            __instance.worldPosition = __instance.followPosition;
+        }
     }
 }
