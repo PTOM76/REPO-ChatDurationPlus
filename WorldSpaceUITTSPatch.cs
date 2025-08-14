@@ -15,8 +15,11 @@ static class WorldSpaceUITTSPatch
     {
         TimerData timerData = timers.GetOrCreateValue(__instance);
 
-        if (__instance.ttsVoice != null && __instance.ttsVoice.isSpeaking) 
+        if (__instance.ttsVoice != null && __instance.ttsVoice.isSpeaking)
+        {
+            timerData.reset();
             return true;
+        }
 
         if (timerData.extraTime > 0f)
         {
@@ -30,8 +33,7 @@ static class WorldSpaceUITTSPatch
     [HarmonyPostfix, HarmonyPatch(nameof(WorldSpaceUITTS.Update))]
     private static void PostfixUpdateUI(WorldSpaceUITTS __instance)
     {
-        TimerData timerData;
-        if (timers.TryGetValue(__instance, out timerData) && timerData.extraTime > 0f)
+        if (timers.TryGetValue(__instance, out TimerData timerData) && timerData.extraTime > 0f)
             __instance.UpdatePositionAndAlpha(timerData);
     }
 }
@@ -69,7 +71,6 @@ public static class WorldSpaceUITTS_Extension
             }
 
             Vector3 newFollowPos = Vector3.Lerp(currentFollowPos, targetPos, Mathf.Min(1f, 10f * Time.deltaTime));
-
             followPositionField.SetValue(__instance, newFollowPos);
 
             if (worldPositionField != null)

@@ -2,12 +2,15 @@
 using Newtonsoft.Json;
 using BepInEx;
 
+namespace ChatDurationPlus;
+
 public class TimerData
 {
-    public float extraTime = 10f;
+    public float extraTime = 15f;
     public bool isInit = false;
+    public string lastText = "";
 
-    public static float defaultExtraTime = 10f;
+    public static float defaultExtraTime = 15f;
     public static string path = Path.Combine(Paths.ConfigPath, "ChatDurationPlus.json");
 
     static TimerData()
@@ -32,6 +35,12 @@ public class TimerData
 
             }
         }
+    }
+
+    public void reset()
+    {
+        extraTime = defaultExtraTime;
+        isInit = false;
     }
 
     public TimerData()
