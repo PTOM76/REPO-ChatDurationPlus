@@ -4,7 +4,8 @@ using BepInEx;
 
 public class TimerData
 {
-    public float extraTime;
+    public float extraTime = 10f;
+    public bool isInit = false;
 
     public static float defaultExtraTime = 10f;
     public static string path = Path.Combine(Paths.ConfigPath, "ChatDurationPlus.json");
