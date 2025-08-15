@@ -5,7 +5,7 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <Authors>Pitan</Authors>
-    <Version>1.0.0</Version>
+    <Version>1.0.2</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
@@ -29,5 +29,39 @@
     <PackageReference Include="UnityEngine.Modules" Version="2022.3.21" IncludeAssets="compile" PrivateAssets="all"/>
     <PackageReference Include="R.E.P.O.GameLibs.Steam" Version="*-*" PrivateAssets="all" Publicize="true" />
   </ItemGroup>
+
+  <Target Name="CreatePluginZip" AfterTargets="Build">
+    <PropertyGroup>
+      <PluginDir>$(MSBuildProjectDirectory)/plugins/Pitan-ChatDurationPlus</PluginDir>
+      <ZipFileName>ChatDurationPlus-$(Version).zip</ZipFileName>
+      <ZipPath>$(PluginDir)/$(ZipFileName)</ZipPath>
+      <TempDir>$(MSBuildProjectDirectory)/temp_zip</TempDir>
+    </PropertyGroup>
+
+    <Delete Files="$(ZipPath)" Condition="Exists('$(ZipPath)')" />
+    <RemoveDir Directories="$(TempDir)" Condition="Exists('$(TempDir)')" />
+
+    <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(PluginDir)" />
+
+    <MakeDir Directories="$(TempDir)" />
+    <ItemGroup>
+      <PluginFiles Include="$(PluginDir)/**" Exclude="$(ZipPath)" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PluginFiles)" DestinationFiles="@(PluginFiles->'$(TempDir)/%(RecursiveDir)%(Filename)%(Extension)')" />
+
+    <Exec Command="cd &quot;$(TempDir)&quot; &amp;&amp; zip -r &quot;$(ZipFileName)&quot; ."
+          ContinueOnError="false"
+          Condition="$([MSBuild]::IsOSPlatform('Linux')) Or $([MSBuild]::IsOSPlatform('OSX'))" />
+
+    <Exec Command="powershell -Command &quot;Get-ChildItem -Path '$(TempDir)' -Recurse | Compress-Archive -DestinationPath '$(TempDir)/$(ZipFileName)' -Force&quot;"
+          ContinueOnError="false"
+          Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+
+    <Move SourceFiles="$(TempDir)/$(ZipFileName)" DestinationFiles="$(ZipPath)" />
+    <RemoveDir Directories="$(TempDir)" />
+
+    <Message Text="Created plugin zip: $(ZipPath)" Importance="high" />
+  </Target>
+
 
 </Project>

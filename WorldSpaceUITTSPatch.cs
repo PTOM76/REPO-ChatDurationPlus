@@ -1,7 +1,5 @@
 ﻿using HarmonyLib;
-using System.Collections.Generic;
 using System.Reflection;
-using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
@@ -11,6 +9,12 @@ namespace ChatDurationPlus;
 static class WorldSpaceUITTSPatch
 {
     private static readonly ConditionalWeakTable<WorldSpaceUITTS, TimerData> timers = new ConditionalWeakTable<WorldSpaceUITTS, TimerData>();
+    private static readonly FieldInfo textColorField = AccessTools.Field(typeof(WorldSpaceUITTS), "textColor");
+    private static readonly FieldInfo textAlphaField = AccessTools.Field(typeof(WorldSpaceUITTS), "textAlpha");
+    private static readonly FieldInfo textAlphaTargetField = AccessTools.Field(typeof(WorldSpaceUITTS), "textAlphaTarget");
+    private static readonly FieldInfo curveLerpField = AccessTools.Field(typeof(WorldSpaceUITTS), "curveLerp");
+    private static readonly FieldInfo followPositionField = AccessTools.Field(typeof(WorldSpaceUITTS), "followPosition");
+    private static readonly FieldInfo worldPositionField = AccessTools.Field(typeof(WorldSpaceUITTS), "worldPosition");
 
     public static bool isExtend(WorldSpaceUITTS instance)
     {
@@ -29,26 +33,13 @@ static class WorldSpaceUITTSPatch
         return false;
     }
 
-    [HarmonyTranspiler, HarmonyPatch(nameof(WorldSpaceUITTS.Update))]
-    static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator il)
+    [HarmonyPrefix, HarmonyPatch(nameof(WorldSpaceUITTS.Update))]
+    static void PrefixUpdate(WorldSpaceUITTS __instance)
     {
-        var codes = new List<CodeInstruction>(instructions);
-        var isExtendFunc = AccessTools.Method(typeof(WorldSpaceUITTSPatch), nameof(isExtend));
-
-        for (int i = 0; i < codes.Count; i++)
+        if (isExtend(__instance))
         {
-            if (codes[i].opcode == OpCodes.Call && ((MethodInfo) codes[i].operand) == AccessTools.Method(typeof(Object), nameof(Object.Destroy), new[] { typeof(Object) }))
-            {
-                var skipLabel = il.DefineLabel();
-                var nop = new CodeInstruction(OpCodes.Nop) { labels = new List<Label> { skipLabel } };
-                codes.Insert(i + 2, nop);
-                codes.Insert(i + 2, new CodeInstruction(OpCodes.Ldarg_0));
-                codes.Insert(i + 3, new CodeInstruction(OpCodes.Call, isExtendFunc));
-                codes.Insert(i + 4, new CodeInstruction(OpCodes.Brtrue_S, skipLabel));
-            }
+            textAlphaTargetField.SetValue(__instance, 1f);
         }
-
-        return codes;
     }
 
     [HarmonyPostfix, HarmonyPatch(nameof(WorldSpaceUITTS.Update))]
@@ -56,15 +47,22 @@ static class WorldSpaceUITTSPatch
     {
         if (timers.TryGetValue(__instance, out TimerData timerData) && timerData.extraTime > 0f)
         {
-            __instance.textAlphaTarget = 1f;
+            textAlphaTargetField.SetValue(__instance, 1f);
 
             if (__instance.followTransform)
             {
-                __instance.followPosition = Vector3.Lerp(__instance.followPosition, __instance.followTransform.position, 10f * Time.deltaTime);
-                __instance.worldPosition = __instance.followPosition + __instance.curveIntro.Evaluate(__instance.curveLerp) * Vector3.up * 0.025f;
+                var pos = (Vector3)followPositionField.GetValue(__instance);
+                var newPos = Vector3.Lerp(pos, __instance.followTransform.position, 10f * Time.deltaTime);
+                followPositionField.SetValue(__instance, newPos);
+
+                var curveLerp = (float)curveLerpField.GetValue(__instance);
+                var newWorldPos = newPos + __instance.curveIntro.Evaluate(curveLerp) * Vector3.up * 0.025f;
+                worldPositionField.SetValue(__instance, newWorldPos);
             }
 
-            __instance.text.color = new Color(__instance.textColor.r, __instance.textColor.g, __instance.textColor.b, __instance.textAlpha);
+            var color = (Color) textColorField.GetValue(__instance);
+            var alpha = (float) textAlphaField.GetValue(__instance);
+            __instance.text.color = new Color(color.r, color.g, color.b, alpha);
         }
     }
 }
