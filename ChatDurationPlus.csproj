@@ -9,6 +9,12 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
+  <!-- Exclude decompiled folder -->
+  <ItemGroup>
+    <Compile Remove="decompiled/**" />
+    <None Include="decompiled/**" />
+  </ItemGroup>
+
   <!-- Add Package Sources -->
   <PropertyGroup>
     <RestoreAdditionalProjectSources>

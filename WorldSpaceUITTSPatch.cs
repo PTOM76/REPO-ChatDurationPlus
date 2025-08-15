@@ -9,12 +9,6 @@ namespace ChatDurationPlus;
 static class WorldSpaceUITTSPatch
 {
     private static readonly ConditionalWeakTable<WorldSpaceUITTS, TimerData> timers = new ConditionalWeakTable<WorldSpaceUITTS, TimerData>();
-    private static readonly FieldInfo textColorField = AccessTools.Field(typeof(WorldSpaceUITTS), "textColor");
-    private static readonly FieldInfo textAlphaField = AccessTools.Field(typeof(WorldSpaceUITTS), "textAlpha");
-    private static readonly FieldInfo textAlphaTargetField = AccessTools.Field(typeof(WorldSpaceUITTS), "textAlphaTarget");
-    private static readonly FieldInfo curveLerpField = AccessTools.Field(typeof(WorldSpaceUITTS), "curveLerp");
-    private static readonly FieldInfo followPositionField = AccessTools.Field(typeof(WorldSpaceUITTS), "followPosition");
-    private static readonly FieldInfo worldPositionField = AccessTools.Field(typeof(WorldSpaceUITTS), "worldPosition");
 
     public static bool isExtend(WorldSpaceUITTS instance)
     {
@@ -33,36 +27,45 @@ static class WorldSpaceUITTSPatch
         return false;
     }
 
-    [HarmonyPrefix, HarmonyPatch(nameof(WorldSpaceUITTS.Update))]
-    static void PrefixUpdate(WorldSpaceUITTS __instance)
+    [HarmonyPostfix, HarmonyPatch("Update")]
+    static void PostfixUpdate(WorldSpaceUITTS __instance)
     {
         if (isExtend(__instance))
         {
+            // 延長中は強制的に表示を維持
+            var textAlphaTargetField = AccessTools.Field(typeof(WorldSpaceUITTS), "textAlphaTarget");
+            var textAlphaField = AccessTools.Field(typeof(WorldSpaceUITTS), "textAlpha");
+            var textColorField = AccessTools.Field(typeof(WorldSpaceUITTS), "textColor");
+
             textAlphaTargetField.SetValue(__instance, 1f);
+
+            // textAlphaを直接1.0に近づける
+            var currentAlpha = (float)textAlphaField.GetValue(__instance);
+            var newAlpha = Mathf.Lerp(currentAlpha, 1f, 30f * Time.deltaTime);
+            textAlphaField.SetValue(__instance, newAlpha);
+
+            // テキスト色を強制更新
+            var color = (Color)textColorField.GetValue(__instance);
+            __instance.text.color = new Color(color.r, color.g, color.b, newAlpha);
         }
     }
+}
 
-    [HarmonyPostfix, HarmonyPatch(nameof(WorldSpaceUITTS.Update))]
-    static void PostfixUpdate(WorldSpaceUITTS __instance)
+// Object.Destroyをブロックするパッチ
+[HarmonyPatch(typeof(Object), "Destroy", typeof(Object))]
+static class ObjectDestroyPatch
+{
+    static bool Prefix(Object obj)
     {
-        if (timers.TryGetValue(__instance, out TimerData timerData) && timerData.extraTime > 0f)
+        if (obj is GameObject gameObject)
         {
-            textAlphaTargetField.SetValue(__instance, 1f);
-
-            if (__instance.followTransform)
+            var worldSpaceUI = gameObject.GetComponent<WorldSpaceUITTS>();
+            if (worldSpaceUI != null && WorldSpaceUITTSPatch.isExtend(worldSpaceUI))
             {
-                var pos = (Vector3)followPositionField.GetValue(__instance);
-                var newPos = Vector3.Lerp(pos, __instance.followTransform.position, 10f * Time.deltaTime);
-                followPositionField.SetValue(__instance, newPos);
-
-                var curveLerp = (float)curveLerpField.GetValue(__instance);
-                var newWorldPos = newPos + __instance.curveIntro.Evaluate(curveLerp) * Vector3.up * 0.025f;
-                worldPositionField.SetValue(__instance, newWorldPos);
+                // 延長中はDestroyをブロック
+                return false;
             }
-
-            var color = (Color) textColorField.GetValue(__instance);
-            var alpha = (float) textAlphaField.GetValue(__instance);
-            __instance.text.color = new Color(color.r, color.g, color.b, alpha);
         }
+        return true;
     }
 }
