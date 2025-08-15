@@ -1,7 +1,0 @@
-{
-  "name": "ChatDurationPlus",
-  "version_number": "0.0.2",
-  "description": "Chat messages stay longer and follow the sender.",
-  "website_url": "https://github.com/PTOM76/REPO-ChatDurationPlus",
-  "dependencies": ["BepInEx-BepInExPack-5.4.2100"]
-}
