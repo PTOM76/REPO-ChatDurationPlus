@@ -1,7 +1,9 @@
 ﻿using HarmonyLib;
-using UnityEngine;
+using System.Collections.Generic;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
+using UnityEngine;
 
 namespace ChatDurationPlus;
 
@@ -10,71 +12,59 @@ static class WorldSpaceUITTSPatch
 {
     private static readonly ConditionalWeakTable<WorldSpaceUITTS, TimerData> timers = new ConditionalWeakTable<WorldSpaceUITTS, TimerData>();
 
-    [HarmonyPrefix, HarmonyPatch(nameof(WorldSpaceUITTS.Update))]
-    private static bool DisplayTimePatch(WorldSpaceUITTS __instance)
+    public static bool isExtend(WorldSpaceUITTS instance)
     {
-        TimerData timerData = timers.GetOrCreateValue(__instance);
-
-        if (__instance.ttsVoice != null && __instance.ttsVoice.isSpeaking)
+        if (instance.ttsVoice != null && instance.ttsVoice.isSpeaking)
         {
-            timerData.reset();
+            timers.GetOrCreateValue(instance).reset();
             return true;
         }
 
-        if (timerData.extraTime > 0f)
+        if (timers.TryGetValue(instance, out TimerData timerData) && timerData.extraTime > 0f)
         {
             timerData.extraTime -= Time.deltaTime;
-            return false;
+            return true;
         }
 
-        return true;
+        return false;
+    }
+
+    [HarmonyTranspiler, HarmonyPatch(nameof(WorldSpaceUITTS.Update))]
+    static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator il)
+    {
+        var codes = new List<CodeInstruction>(instructions);
+        var isExtendFunc = AccessTools.Method(typeof(WorldSpaceUITTSPatch), nameof(isExtend));
+
+        for (int i = 0; i < codes.Count; i++)
+        {
+            if (codes[i].opcode == OpCodes.Call && ((MethodInfo) codes[i].operand) == AccessTools.Method(typeof(Object), nameof(Object.Destroy), new[] { typeof(Object) }))
+            {
+                var skipLabel = il.DefineLabel();
+                var nop = new CodeInstruction(OpCodes.Nop) { labels = new List<Label> { skipLabel } };
+                codes.Insert(i + 2, nop);
+                codes.Insert(i + 2, new CodeInstruction(OpCodes.Ldarg_0));
+                codes.Insert(i + 3, new CodeInstruction(OpCodes.Call, isExtendFunc));
+                codes.Insert(i + 4, new CodeInstruction(OpCodes.Brtrue_S, skipLabel));
+            }
+        }
+
+        return codes;
     }
 
     [HarmonyPostfix, HarmonyPatch(nameof(WorldSpaceUITTS.Update))]
-    private static void PostfixUpdateUI(WorldSpaceUITTS __instance)
+    static void PostfixUpdate(WorldSpaceUITTS __instance)
     {
         if (timers.TryGetValue(__instance, out TimerData timerData) && timerData.extraTime > 0f)
-            __instance.UpdatePositionAndAlpha(timerData);
-    }
-}
-
-public static class WorldSpaceUITTS_Extension
-{
-    public static void UpdatePositionAndAlpha(this WorldSpaceUITTS __instance, TimerData timerData)
-    {
-        var textAlphaField = typeof(WorldSpaceUITTS).GetField("textAlpha", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-        var textColorField = typeof(WorldSpaceUITTS).GetField("textColor", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-
-        if (textAlphaField == null || textColorField == null) return;
-
-        float textAlpha = (float) textAlphaField.GetValue(__instance);
-        float targetAlpha = (__instance.followTransform != null) ? 1f : 0f;
-
-        textAlpha = Mathf.MoveTowards(textAlpha, targetAlpha, 30f * Time.deltaTime);
-        textAlphaField.SetValue(__instance, textAlpha);
-
-        Color textColor = (Color) textColorField.GetValue(__instance);
-        __instance.text.color = new Color(textColor.r, textColor.g, textColor.b, textAlpha);
-
-        var followPositionField = typeof(WorldSpaceUITTS).GetField("followPosition", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-        var worldPositionField = typeof(WorldSpaceUITTS).GetField("worldPosition", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-
-        if (__instance.followTransform != null && followPositionField != null)
         {
-            Vector3 currentFollowPos = (Vector3)followPositionField.GetValue(__instance);
-            Vector3 targetPos = __instance.followTransform.position;
+            __instance.textAlphaTarget = 1f;
 
-            if (!timerData.isInit)
+            if (__instance.followTransform)
             {
-                currentFollowPos = targetPos;
-                timerData.isInit = true;
+                __instance.followPosition = Vector3.Lerp(__instance.followPosition, __instance.followTransform.position, 10f * Time.deltaTime);
+                __instance.worldPosition = __instance.followPosition + __instance.curveIntro.Evaluate(__instance.curveLerp) * Vector3.up * 0.025f;
             }
 
-            Vector3 newFollowPos = Vector3.Lerp(currentFollowPos, targetPos, Mathf.Min(1f, 10f * Time.deltaTime));
-            followPositionField.SetValue(__instance, newFollowPos);
-
-            if (worldPositionField != null)
-                worldPositionField.SetValue(__instance, newFollowPos);
+            __instance.text.color = new Color(__instance.textColor.r, __instance.textColor.g, __instance.textColor.b, __instance.textAlpha);
         }
     }
 }

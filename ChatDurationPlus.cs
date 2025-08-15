@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace ChatDurationPlus;
 
-[BepInPlugin("Pitan.ChatDurationPlus", "ChatDurationPlus", "0.0.1")]
+[BepInPlugin("Pitan.ChatDurationPlus", "ChatDurationPlus", "0.0.2")]
 public class ChatDurationPlus : BaseUnityPlugin
 {
     internal static ChatDurationPlus Instance { get; private set; } = null!;
