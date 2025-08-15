@@ -5,6 +5,7 @@ Debug/
 Release/
 Library/
 Temp/
+plugins/
 
 *.user
 *.suo
