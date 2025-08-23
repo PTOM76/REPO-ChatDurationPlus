@@ -1,9 +1,9 @@
 # ChatDurationPlus (R.E.P.O Mod)
-## ⏬ Downloads:
+## ⏬ Downloads
 - Nexusmods: https://www.nexusmods.com/repo/mods/150
 - Thunderstore: https://thunderstore.io/c/repo/p/PTOM76/ChatDurationPlus/
 
-## ✨ Funciton
+## ✨ Function
 Extends chat message display time （default by 15 seconds) <br/>
 The display duration can be adjusted in `Pitan.ChatDurationPlus.cfg`.
 
