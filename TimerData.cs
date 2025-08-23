@@ -1,5 +1,5 @@
 ﻿using System.IO;
-using Newtonsoft.Json;
+using System.Globalization;
 using BepInEx;
 
 namespace ChatDurationPlus;
@@ -10,41 +10,28 @@ public class TimerData
     public bool isInit = false;
     public string lastText = "";
 
-    public static float defaultExtraTime = 15f;
-    public static string path = Path.Combine(Paths.ConfigPath, "ChatDurationPlus.json");
-
-    static TimerData()
+    public TimerData()
     {
-        
-        if (!File.Exists(path))
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            File.WriteAllText(path, JsonConvert.SerializeObject(new { extraTime = defaultExtraTime }, Formatting.Indented));
-        }
-        else
-        {
-            try
-            {
-                string json = File.ReadAllText(path);
-                var data = JsonConvert.DeserializeObject<TimerData>(json);
-                if (data != null)
-                    defaultExtraTime = data.extraTime;
-            }
-            catch
-            {
-
-            }
-        }
+        // 使用 BepInEx 配置而不是 static defaultExtraTime
+        extraTime = ChatDurationPlus.ExtraTimeConfig?.Value ?? 15f;
     }
 
     public void reset()
     {
-        extraTime = defaultExtraTime;
+        extraTime = ChatDurationPlus.ExtraTimeConfig?.Value ?? 15f;
         isInit = false;
     }
-
-    public TimerData()
+    public float GetExtraTime()
     {
-        extraTime = defaultExtraTime;
+        return ChatDurationPlus.ExtraTimeConfig?.Value ?? extraTime;
+    }
+    public bool IsPluginEnabled()
+    {
+        return ChatDurationPlus.EnablePluginConfig?.Value ?? true;
+    }
+    public bool IsDebugMode()
+    {
+        return ChatDurationPlus.DebugModeConfig?.Value ?? false;
     }
 }
+
